@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VNScan MTF — Đa Khung Thời Gian</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c0f; --bg2:#111418; --bg3:#181d24;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --text:#e8eaf0; --muted:#636b7a;
+  --green:#00e5a0; --blue:#0095ff; --warn:#ffb800;
+  --red:#ff4757; --cyan:#22d3ee; --purple:#c084fc;
+  --mono:'IBM Plex Mono',monospace; --display:'Syne',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;}
+
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,12,15,0.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+}
+.logo{font-family:var(--display);font-weight:800;font-size:17px;}
+.logo span{color:var(--green);}
+.logo small{font-size:10px;color:var(--muted);font-family:var(--mono);font-weight:400;margin-left:6px;}
+.status-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.summary-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;
+}
+.sum-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;
+}
+.sum-num{font-family:var(--display);font-size:28px;font-weight:800;}
+.sum-lbl{font-size:9px;color:var(--muted);margin-top:3px;}
+
+.filters{
+  display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;
+}
+.filters::-webkit-scrollbar{display:none;}
+.filter-btn{
+  padding:6px 14px;border-radius:20px;font-size:11px;font-family:var(--mono);
+  cursor:pointer;white-space:nowrap;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);transition:all 0.15s;
+}
+.filter-btn.on{background:var(--bg3);color:var(--text);border-color:var(--green);}
+
+.scan-btn{
+  margin:10px 16px 0;width:calc(100% - 32px);
+  background:var(--green);color:#000;border:none;border-radius:10px;
+  padding:13px;font-family:var(--display);font-size:13px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.spin{display:none;width:14px;height:14px;border:2px solid #000;
+      border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sec-hdr{padding:14px 16px 8px;display:flex;align-items:center;justify-content:space-between;}
+.sec-title{font-family:var(--display);font-size:13px;font-weight:700;}
+.sec-badge{font-size:10px;padding:3px 8px;border-radius:20px;
+           background:rgba(0,229,160,0.12);color:var(--green);border:1px solid rgba(0,229,160,0.25);}
+.sec-badge.blue{background:rgba(0,149,255,0.12);color:var(--blue);border-color:rgba(0,149,255,0.25);}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;padding:0 16px 16px;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;min-width:560px;}
+thead th{
+  padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);
+  font-size:10px;color:var(--muted);font-weight:600;text-align:center;white-space:nowrap;
+}
+thead th:first-child{text-align:left;}
+tbody tr{transition:background 0.1s;}
+tbody tr:hover{background:rgba(255,255,255,0.02);}
+
+td.ticker-cell{
+  padding:10px 12px;border:1px solid var(--border);
+  border-left:3px solid var(--green);
+}
+td.ticker-cell.blue-left{border-left-color:var(--blue);}
+td.ticker-cell.gray-left{border-left-color:var(--muted);}
+.tk{font-family:var(--display);font-size:16px;font-weight:800;}
+.tk-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+
+td.tf-cell{padding:8px 6px;border:1px solid var(--border);text-align:center;min-width:90px;}
+td.tf-cell.ok{background:rgba(0,229,160,0.05);border-left:2px solid rgba(0,229,160,0.3);}
+td.tf-cell.no{background:rgba(255,71,87,0.04);border-left:2px solid rgba(255,71,87,0.2);}
+
+.tf-status{font-size:14px;}
+.tf-macd{font-size:9px;margin-top:3px;}
+.tf-stoch{font-size:9px;margin-top:1px;}
+.g{color:var(--green);}
+.r{color:var(--red);}
+.m{color:var(--muted);}
+.w{color:var(--warn);}
+
+td.score-cell{padding:8px 6px;border:1px solid var(--border);text-align:center;}
+.score-pill{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;
+}
+.score-3{background:rgba(0,229,160,0.15);color:var(--green);border:1px solid rgba(0,229,160,0.3);}
+.score-2{background:rgba(0,149,255,0.12);color:var(--blue);border:1px solid rgba(0,149,255,0.25);}
+.score-1{background:rgba(255,184,0,0.1);color:var(--warn);}
+
+.empty{text-align:center;padding:30px 20px;color:var(--muted);font-size:12px;}
+.bottom-spacer{height:24px;}
+
+.last-update{font-size:10px;color:var(--muted);padding:4px 16px 8px;}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--bg3);border:1px solid var(--border2);color:var(--green);
+  padding:10px 18px;border-radius:20px;font-size:12px;z-index:300;
+  opacity:0;transition:opacity 0.3s;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">VN<span>Scan</span><small>MTF</small></div>
+  <div class="status-row">
+    <div class="dot" id="mkt-dot"></div>
+    <span id="mkt-label">—</span>
+    <span id="clock" style="margin-left:4px;"></span>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-grid">
+  <div class="sum-card" style="border-color:rgba(0,229,160,0.2);">
+    <div class="sum-num g" id="cnt3">—</div>
+    <div class="sum-lbl">⭐ 3 Khung đồng thuận</div>
+  </div>
+  <div class="sum-card" style="border-color:rgba(0,149,255,0.2);">
+    <div class="sum-num" style="color:var(--blue);" id="cnt2">—</div>
+    <div class="sum-lbl">🔵 2 Khung đồng thuận</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-num" style="color:var(--muted);" id="cntTotal">—</div>
+    <div class="sum-lbl">Tổng mã quét</div>
+  </div>
+</div>
+
+<p class="last-update" id="last-update">Chưa có dữ liệu</p>
+
+<!-- SCAN BUTTON -->
+<button class="scan-btn" onclick="runScan()">
+  <span class="spin" id="spin"></span>
+  <span id="scan-lbl">⚡ Cập nhật ngay</span>
+</button>
+
+<!-- FILTERS -->
+<div class="filters" style="margin-top:10px;">
+  <button class="filter-btn on" onclick="setFilter(this,'all')">Tất cả</button>
+  <button class="filter-btn" onclick="setFilter(this,'bullish3')">⭐ 3 Khung</button>
+  <button class="filter-btn" onclick="setFilter(this,'bullish2')">🔵 2 Khung</button>
+</div>
+
+<!-- TABLE: 3 KHUNG -->
+<div id="section-3">
+  <div class="sec-hdr">
+    <div class="sec-title" style="color:var(--green);">⭐ 3 Khung đồng thuận</div>
+    <div class="sec-badge" id="badge3">0 mã</div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;min-width:100px;">Mã</th>
+          <th>📅 Tháng</th>
+          <th>📆 Tuần</th>
+          <th>📊 Ngày</th>
+          <th>Điểm</th>
+        </tr>
+      </thead>
+      <tbody id="tbody3">
+        <tr><td colspan="5" class="empty">Nhấn "Cập nhật ngay" để tải dữ liệu</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TABLE: 2 KHUNG -->
+<div id="section-2">
+  <div class="sec-hdr">
+    <div class="sec-title" style="color:var(--blue);">🔵 2 Khung đồng thuận</div>
+    <div class="sec-badge blue" id="badge2">0 mã</div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;min-width:100px;">Mã</th>
+          <th>📅 Tháng</th>
+          <th>📆 Tuần</th>
+          <th>📊 Ngày</th>
+          <th>Điểm</th>
+        </tr>
+      </thead>
+      <tbody id="tbody2">
+        <tr><td colspan="5" class="empty">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bottom-spacer"></div>
+<div id="toast"></div>
+
+<script>
+const API_BASE = (window.location.hostname==='localhost'||window.location.protocol==='file:')
+  ? 'https://tuananhstock.onrender.com'
+  : window.location.origin;
+
+let activeFilter = 'all';
+let cachedData   = null;
+
+// ── Clock ──────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  document.getElementById('clock').textContent =
+    h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0');
+  const day = now.getDay(), t = h*100+m;
+  const wd = day>=1&&day<=5;
+  let lbl='Thị trường đóng', dc='#636b7a';
+  if(!wd){lbl='Nghỉ cuối tuần';}
+  else if(t>=900&&t<915){lbl='🔔 ATO — Mở cửa';dc='var(--green)';}
+  else if(t>=915&&t<1130){lbl='Thị trường mở — Sáng';dc='var(--green)';}
+  else if(t>=1130&&t<1300){lbl='Nghỉ trưa';dc='var(--warn)';}
+  else if(t>=1300&&t<1430){lbl='Thị trường mở — Chiều';dc='var(--green)';}
+  else if(t>=1430&&t<1445){lbl='🔔 ATC — Đóng cửa';dc='var(--red)';}
+  document.getElementById('mkt-dot').style.background=dc;
+  document.getElementById('mkt-label').textContent=lbl;
+}
+updateClock();setInterval(updateClock,10000);
+
+// ── Render TF cell ─────────────────────────────────────────────────────
+function tfCell(tf) {
+  if(!tf) return '<td class="tf-cell no"><span class="m">—</span></td>';
+  const macd=tf.macd||{}, stoch=tf.stoch||{};
+  const ok = tf.ok;
+  const macdIcon = macd.crossover?'↑▲':(macd.bullish?'▲':'▼');
+  const stochIcon= stoch.signal?'↑':(stoch.bullish?'▲':'▼');
+  const mC = macd.bullish?'g':'r';
+  const sC = stoch.bullish?'g':'r';
+  const hist = macd.hist||0;
+  const histStr = (hist>0?'+':'')+hist.toFixed(3);
+  return `<td class="tf-cell ${ok?'ok':'no'}">
+    <div class="tf-status">${ok?'✅':'❌'}</div>
+    <div class="tf-macd ${mC}">MACD ${macdIcon} ${histStr}</div>
+    <div class="tf-stoch ${sC}">K:${stoch.k||'—'} D:${stoch.d||'—'} ${stochIcon}</div>
+  </td>`;
+}
+
+// ── Render row ─────────────────────────────────────────────────────────
+function stockRow(s, borderClass) {
+  const tf = s.timeframes||{};
+  const chg = s.change_pct||0;
+  const chgC = chg>=0?'g':'r';
+  const chgStr = (chg>=0?'+':'')+chg.toFixed(2)+'%';
+  const scoreClass = s.bullish_count>=3?'score-3':s.bullish_count>=2?'score-2':'score-1';
+  return `<tr>
+    <td class="ticker-cell ${borderClass}">
+      <div class="tk">${s.ticker}</div>
+      <div class="tk-sub">${(s.price||0).toLocaleString('vi-VN')} đ &nbsp;<span class="${chgC}">${chgStr}</span></div>
+    </td>
+    ${tfCell(tf.monthly)}
+    ${tfCell(tf.weekly)}
+    ${tfCell(tf.daily)}
+    <td class="score-cell">
+      <span class="${scoreClass} score-pill">${s.bullish_count}/3</span>
+    </td>
+  </tr>`;
+}
+
+// ── Render tables ──────────────────────────────────────────────────────
+function renderTables(data) {
+  if(!data) return;
+  cachedData = data;
+
+  const all3 = data.all_bullish||[];
+  const all2 = data.two_bullish||[];
+  const sum  = data.summary||{};
+
+  document.getElementById('cnt3').textContent    = sum.count_3_frames||0;
+  document.getElementById('cnt2').textContent    = sum.count_2_frames||0;
+  document.getElementById('cntTotal').textContent= sum.total_scanned||0;
+  document.getElementById('badge3').textContent  = all3.length+' mã';
+  document.getElementById('badge2').textContent  = all2.length+' mã';
+
+  // Section 3
+  document.getElementById('section-3').style.display =
+    (activeFilter==='bullish2')?'none':'block';
+  document.getElementById('section-2').style.display =
+    (activeFilter==='bullish3')?'none':'block';
+
+  const show3 = activeFilter==='bullish2'?[]:all3;
+  const show2 = activeFilter==='bullish3'?[]:all2;
+
+  document.getElementById('tbody3').innerHTML = show3.length
+    ? show3.map(s=>stockRow(s,'')).join('')
+    : '<tr><td colspan="5" class="empty">Không có mã nào đồng thuận cả 3 khung</td></tr>';
+
+  document.getElementById('tbody2').innerHTML = show2.length
+    ? show2.slice(0,20).map(s=>stockRow(s,'blue-left')).join('')
+    : '<tr><td colspan="5" class="empty">Không có mã nào</td></tr>';
+
+  // Last update
+  if(data.last_scan) {
+    const t = new Date(data.last_scan);
+    const vnT = new Date(t.getTime()+t.getTimezoneOffset()*60000+7*3600000);
+    document.getElementById('last-update').textContent =
+      `Dữ liệu thật — cập nhật ${vnT.getHours().toString().padStart(2,'0')}:${vnT.getMinutes().toString().padStart(2,'0')} — ${sum.total_results||0} mã có tín hiệu`;
+  }
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────
+function setFilter(btn, f) {
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  activeFilter = f;
+  if(cachedData) renderTables(cachedData);
+}
+
+// ── Scan ───────────────────────────────────────────────────────────────
+async function runScan() {
+  const lbl=document.getElementById('scan-lbl');
+  const spin=document.getElementById('spin');
+  lbl.textContent='Đang tải dữ liệu thật...';
+  spin.style.display='block';
+  try {
+    // Kích hoạt quét
+    fetch(API_BASE+'/api/mtf/trigger',{method:'POST'}).catch(()=>{});
+    lbl.textContent='Đang phân tích 100 mã...';
+    // Lấy kết quả hiện tại từ cache trước
+    const r = await fetch(API_BASE+`/api/mtf?filter=all`,{
+      mode:'cors',credentials:'omit',
+      headers:{'Accept':'application/json'},
+      signal:AbortSignal.timeout(35000)
+    });
+    const data = await r.json();
+    if(data.error){
+      showToast('Backend đang quét — thử lại sau 2 phút');
+    } else {
+      renderTables(data);
+      showToast(`Đã cập nhật — ${data.summary?.count_3_frames||0} mã 3 khung đồng thuận`);
+    }
+  } catch(e) {
+    showToast('Lỗi kết nối: '+e.message);
+    document.getElementById('last-update').textContent='⚠ Lỗi kết nối backend';
+  }
+  lbl.textContent='⚡ Cập nhật ngay';
+  spin.style.display='none';
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',3000);
+}
+
+// Auto load khi mở app
+runScan();
+</script>
+</body>
+</html>
