@@ -79,26 +79,18 @@ def health():
 
 @app.get("/api/mtf")
 def get_mtf(filter: str = "all"):
-    """
-    Trả về kết quả MTF scan.
-    filter: all | bullish3 | bullish2
-    """
     result = _cache.get("mtf_result")
     if not result:
         return {"error": "Chưa có dữ liệu — đang quét lần đầu, thử lại sau 2 phút"}
 
-    if filter == "bullish3":
-        stocks = result.get("all_bullish", [])
-    elif filter == "bullish2":
-        stocks = result.get("two_bullish", [])
-    else:
-        stocks = result.get("all", [])
-
+    # Luôn trả về đủ 2 danh sách để frontend render cả 2 bảng
     return {
-        "stocks":    stocks,
-        "summary":   result.get("summary", {}),
-        "last_scan": _cache.get("last_scan"),
-        "filter":    filter,
+        "stocks":       result.get("all", []),
+        "all_bullish":  result.get("all_bullish", []),
+        "two_bullish":  result.get("two_bullish", []),
+        "summary":      result.get("summary", {}),
+        "last_scan":    _cache.get("last_scan"),
+        "filter":       filter,
     }
 
 

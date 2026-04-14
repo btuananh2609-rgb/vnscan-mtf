@@ -282,67 +282,15 @@ function stockRow(s, borderClass) {
   </tr>`;
 }
 
-// ── Render tables ──────────────────────────────────────────────────────
-function renderTables(data) {
-  if(!data) return;
-  cachedData = data;
-
-  const all3 = data.all_bullish||[];
-  const all2 = data.two_bullish||[];
-  const sum  = data.summary||{};
-
-  document.getElementById('cnt3').textContent    = sum.count_3_frames||0;
-  document.getElementById('cnt2').textContent    = sum.count_2_frames||0;
-  document.getElementById('cntTotal').textContent= sum.total_scanned||0;
-  document.getElementById('badge3').textContent  = all3.length+' mã';
-  document.getElementById('badge2').textContent  = all2.length+' mã';
-
-  // Section 3
-  document.getElementById('section-3').style.display =
-    (activeFilter==='bullish2')?'none':'block';
-  document.getElementById('section-2').style.display =
-    (activeFilter==='bullish3')?'none':'block';
-
-  const show3 = activeFilter==='bullish2'?[]:all3;
-  const show2 = activeFilter==='bullish3'?[]:all2;
-
-  document.getElementById('tbody3').innerHTML = show3.length
-    ? show3.map(s=>stockRow(s,'')).join('')
-    : '<tr><td colspan="5" class="empty">Không có mã nào đồng thuận cả 3 khung</td></tr>';
-
-  document.getElementById('tbody2').innerHTML = show2.length
-    ? show2.slice(0,20).map(s=>stockRow(s,'blue-left')).join('')
-    : '<tr><td colspan="5" class="empty">Không có mã nào</td></tr>';
-
-  // Last update
-  if(data.last_scan) {
-    const t = new Date(data.last_scan);
-    const vnT = new Date(t.getTime()+t.getTimezoneOffset()*60000+7*3600000);
-    document.getElementById('last-update').textContent =
-      `Dữ liệu thật — cập nhật ${vnT.getHours().toString().padStart(2,'0')}:${vnT.getMinutes().toString().padStart(2,'0')} — ${sum.total_results||0} mã có tín hiệu`;
-  }
-}
-
-// ── Filter ─────────────────────────────────────────────────────────────
-function setFilter(btn, f) {
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  activeFilter = f;
-  if(cachedData) renderTables(cachedData);
-}
-
-// ── Scan ───────────────────────────────────────────────────────────────
 async function runScan() {
   const lbl=document.getElementById('scan-lbl');
   const spin=document.getElementById('spin');
   lbl.textContent='Đang tải dữ liệu thật...';
   spin.style.display='block';
   try {
-    // Kích hoạt quét
     fetch(API_BASE+'/api/mtf/trigger',{method:'POST'}).catch(()=>{});
     lbl.textContent='Đang phân tích 100 mã...';
-    // Lấy kết quả hiện tại từ cache trước
-    const r = await fetch(API_BASE+`/api/mtf?filter=all`,{
+    const r = await fetch(API_BASE+'/api/mtf?filter=all',{
       mode:'cors',credentials:'omit',
       headers:{'Accept':'application/json'},
       signal:AbortSignal.timeout(35000)
@@ -352,7 +300,7 @@ async function runScan() {
       showToast('Backend đang quét — thử lại sau 2 phút');
     } else {
       renderTables(data);
-      showToast(`Đã cập nhật — ${data.summary?.count_3_frames||0} mã 3 khung đồng thuận`);
+      showToast(`Đã cập nhật — ${data.summary?.count_3_frames||0} mã 3 khung, ${data.summary?.count_2_frames||0} mã 2 khung`);
     }
   } catch(e) {
     showToast('Lỗi kết nối: '+e.message);
@@ -360,6 +308,49 @@ async function runScan() {
   }
   lbl.textContent='⚡ Cập nhật ngay';
   spin.style.display='none';
+}
+
+function renderTables(data) {
+  if(!data) return;
+  cachedData = data;
+
+  // Hỗ trợ cả 2 format API: {all_bullish, two_bullish} hoặc {stocks}
+  const all3 = data.all_bullish || [];
+  const all2 = data.two_bullish || [];
+  const sum  = data.summary || {};
+
+  document.getElementById('cnt3').textContent     = sum.count_3_frames ?? all3.length;
+  document.getElementById('cnt2').textContent     = sum.count_2_frames ?? all2.length;
+  document.getElementById('cntTotal').textContent = sum.total_scanned  || sum.total_results || 0;
+  document.getElementById('badge3').textContent   = all3.length + ' mã';
+  document.getElementById('badge2').textContent   = all2.length + ' mã';
+
+  // Ẩn/hiện section theo filter
+  document.getElementById('section-3').style.display =
+    (activeFilter==='bullish2') ? 'none' : 'block';
+  document.getElementById('section-2').style.display =
+    (activeFilter==='bullish3') ? 'none' : 'block';
+
+  const show3 = activeFilter==='bullish2' ? [] : all3;
+  const show2 = activeFilter==='bullish3' ? [] : all2;
+
+  document.getElementById('tbody3').innerHTML = show3.length
+    ? show3.map(s => stockRow(s, '')).join('')
+    : '<tr><td colspan="5" class="empty">Không có mã nào đồng thuận cả 3 khung</td></tr>';
+
+  document.getElementById('tbody2').innerHTML = show2.length
+    ? show2.slice(0, 30).map(s => stockRow(s, 'blue-left')).join('')
+    : '<tr><td colspan="5" class="empty">Không có mã nào</td></tr>';
+
+  // Last update
+  if(data.last_scan) {
+    const t    = new Date(data.last_scan);
+    const vnT  = new Date(t.getTime() + t.getTimezoneOffset()*60000 + 7*3600000);
+    const hh   = vnT.getHours().toString().padStart(2,'0');
+    const mm   = vnT.getMinutes().toString().padStart(2,'0');
+    document.getElementById('last-update').textContent =
+      `Dữ liệu thật — cập nhật ${hh}:${mm} — ${sum.total_results||sum.total_scanned||0} mã đã phân tích`;
+  }
 }
 
 function showToast(msg) {
