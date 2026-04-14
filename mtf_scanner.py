@@ -5,6 +5,7 @@ Gửi email khi cả 3 khung đồng thuận tăng.
 """
 
 import os
+import time
 import logging
 import numpy as np
 import pandas as pd
@@ -37,6 +38,10 @@ def fetch_ohlcv(ticker: str, days: int = 730) -> Optional[pd.DataFrame]:
     """Lấy dữ liệu OHLCV từ VCI — đủ để tính cả khung tháng."""
     try:
         from vnstock import Quote
+        # Đọc API key từ biến môi trường Render
+        api_key = os.environ.get("VNSTOCK_API_KEY", "")
+        if api_key:
+            os.environ["VNSTOCK_API_KEY"] = api_key
         end   = datetime.today().strftime("%Y-%m-%d")
         start = (datetime.today() - timedelta(days=days)).strftime("%Y-%m-%d")
         q  = Quote(symbol=ticker, source="VCI")
@@ -248,7 +253,7 @@ def run_mtf_scan(tickers: list = None) -> dict:
     two_bullish  = []
     errors       = []
 
-    for ticker in tickers:
+    for i, ticker in enumerate(tickers):
         try:
             r = analyze_ticker_mtf(ticker)
             if r:
@@ -260,6 +265,10 @@ def run_mtf_scan(tickers: list = None) -> dict:
         except Exception as e:
             errors.append({"ticker": ticker, "error": str(e)})
             log.warning(f"Lỗi {ticker}: {e}")
+        # Delay 3 giây mỗi 15 mã để tránh rate limit (20 req/phút)
+        if (i + 1) % 15 == 0:
+            log.info(f"Đã quét {i+1}/{len(tickers)} mã — chờ 65 giây tránh rate limit...")
+            time.sleep(65)
 
     # Sắp xếp: nhiều khung bullish + giá tăng trước
     results.sort(key=lambda x: (x["bullish_count"], x["change_pct"]), reverse=True)
