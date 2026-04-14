@@ -31,7 +31,11 @@ _cache = {}
 @app.on_event("startup")
 async def startup():
     log.info("🚀 VNScan MTF khởi động")
-    asyncio.create_task(scheduled_mtf_scan())
+    # Delay 10 giây để server bind port trước, rồi mới bắt đầu quét
+    async def delayed_scan():
+        await asyncio.sleep(10)
+        await scheduled_mtf_scan()
+    asyncio.create_task(delayed_scan())
     # Quét hàng ngày lúc 16:00 (sau khi thị trường đóng cửa 14:45)
     scheduler.add_job(scheduled_mtf_scan, "cron",
                       day_of_week="mon-fri", hour=16, minute=0)
