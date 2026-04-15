@@ -14,22 +14,20 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-# ── VN100 ──────────────────────────────────────────────────────────────
+# ── VN100 chính xác 100 mã (VN30 + VN Midcap, cập nhật 2025) ──────────
 VN100 = [
-    # VN30
-    "VCB","BID","CTG","MBB","TCB","ACB","VPB","HDB","LPB","STB",
-    "VHM","VIC","VRE","MSN","VNM","SAB","MCH","MWG","PNJ","FRT",
-    "HPG","GAS","PLX","POW","GEX","FPT","VND","SSI","HCM","VCI",
-    # VN Midcap
-    "AAA","AGG","AGR","ANV","BCM","BSR","BWE","CII","CMG","CTD",
-    "CTR","DCM","DGC","DGW","DHC","DIG","DPG","DPM","DRC","DXG",
-    "DXS","EIB","EVF","GEG","GMD","GSP","HAG","HAH","HAX","HBC",
-    "HDC","HDG","HHV","HSG","HT1","HVN","IMP","ITC","KBC","KDC",
-    "KDH","KOS","LCG","LHG","MSB","NAB","NKG","NLG","NVL","OCB",
-    "OIL","PC1","PDR","PHR","PLC","PME","PVD","PVS","PVT","QNS",
-    "REE","SBT","SCS","SHB","SIP","SKG","SZC","TCH","TDC","TDM",
-    "TIP","TLG","TPB","TVS","VCG","VGC","VGI","VHC","VIB","VIX",
-    "VJC","VMC","VOS","VSC","VTP",
+    # VN30 — 30 mã vốn hóa lớn nhất
+    "VCB", "BID", "CTG", "MBB", "TCB", "ACB", "VPB", "HDB", "LPB", "STB",
+    "VHM", "VIC", "VRE", "MSN", "VNM", "SAB", "MCH", "MWG", "PNJ", "FRT",
+    "HPG", "GAS", "PLX", "POW", "GEX", "FPT", "VND", "SSI", "HCM", "VCI",
+    # VN Midcap — 70 mã vốn hóa trung bình
+    "AAA", "AGG", "ANV", "BCM", "BSR", "BWE", "CII", "CMG", "CTD", "CTR",
+    "DCM", "DGC", "DGW", "DHC", "DIG", "DPG", "DPM", "DRC", "DXG", "EIB",
+    "EVF", "GEG", "GMD", "HAH", "HAX", "HBC", "HDG", "HHV", "HSG", "HT1",
+    "HVN", "IMP", "KBC", "KDH", "KOS", "LCG", "MSB", "NAB", "NKG", "NLG",
+    "NVL", "OCB", "OIL", "PC1", "PDR", "PHR", "PME", "PVD", "PVS", "PVT",
+    "QNS", "REE", "SBT", "SCS", "SHB", "SIP", "SZC", "TCH", "TDC", "TLG",
+    "TPB", "VCG", "VGC", "VHC", "VIB", "VIX", "VJC", "VOS", "VSC", "VTP",
 ]
 
 # ── DATA FETCHING ───────────────────────────────────────────────────────
