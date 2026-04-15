@@ -283,31 +283,47 @@ function stockRow(s, borderClass) {
 }
 
 async function runScan() {
-  const lbl=document.getElementById('scan-lbl');
-  const spin=document.getElementById('spin');
-  lbl.textContent='Đang tải dữ liệu thật...';
-  spin.style.display='block';
+  const lbl  = document.getElementById('scan-lbl');
+  const spin = document.getElementById('spin');
+  lbl.textContent = 'Đang kết nối...';
+  spin.style.display = 'block';
+
   try {
-    fetch(API_BASE+'/api/mtf/trigger',{method:'POST'}).catch(()=>{});
-    lbl.textContent='Đang phân tích 100 mã...';
-    const r = await fetch(API_BASE+'/api/mtf?filter=all',{
-      mode:'cors',credentials:'omit',
+    // Bước 1: Kích hoạt quét (không chờ kết quả)
+    fetch(API_BASE + '/api/mtf/trigger', {
+      method:'POST', mode:'cors', credentials:'omit'
+    }).catch(()=>{});
+
+    // Bước 2: Lấy kết quả đang có trong cache (không chờ quét xong)
+    lbl.textContent = 'Đang lấy dữ liệu...';
+    const r = await fetch(API_BASE + '/api/mtf', {
+      mode:'cors', credentials:'omit',
       headers:{'Accept':'application/json'},
-      signal:AbortSignal.timeout(35000)
+      signal: AbortSignal.timeout(15000)   // chỉ chờ 15 giây
     });
     const data = await r.json();
-    if(data.error){
-      showToast('Backend đang quét — thử lại sau 2 phút');
+
+    if (data.error) {
+      // Chưa có cache → đang quét lần đầu → tự động thử lại sau 2 phút
+      document.getElementById('last-update').textContent =
+        '⏳ Đang quét 115 mã lần đầu (~10 phút) — tự động cập nhật sau...';
+      showToast('Đang quét lần đầu — tự động thử lại sau 2 phút');
+      // Tự động retry sau 2 phút
+      setTimeout(runScan, 120000);
     } else {
       renderTables(data);
-      showToast(`Đã cập nhật — ${data.summary?.count_3_frames||0} mã 3 khung, ${data.summary?.count_2_frames||0} mã 2 khung`);
+      showToast(`✅ Cập nhật xong — ${data.summary?.count_3_frames||0} mã 3 khung, ${data.summary?.count_2_frames||0} mã 2 khung`);
     }
   } catch(e) {
-    showToast('Lỗi kết nối: '+e.message);
-    document.getElementById('last-update').textContent='⚠ Lỗi kết nối backend';
+    const msg = e.name === 'TimeoutError' ? 'Server đang bận — thử lại sau' : 'Lỗi: ' + e.message;
+    showToast(msg);
+    document.getElementById('last-update').textContent = '⚠ ' + msg;
+    // Tự retry sau 90 giây nếu timeout
+    if (e.name === 'TimeoutError') setTimeout(runScan, 90000);
   }
-  lbl.textContent='⚡ Cập nhật ngay';
-  spin.style.display='none';
+
+  lbl.textContent = '⚡ Cập nhật ngay';
+  spin.style.display = 'none';
 }
 
 function renderTables(data) {
